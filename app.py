@@ -61,32 +61,40 @@ with st.sidebar.form("add_form", clear_on_submit=True):
         st.rarun() if hasattr(st, "rarun") else st.rerun()
 
 # ================= ИНТЕГРАЦИЯ С ИИ (API) =================
+# ================= ИНТЕГРАЦИЯ С ИИ (РЕАЛЬНЫЙ API) =================
 st.header("🤖 ИИ-Рекомендации для принятия решений")
 
 if st.button("Сгенерировать бизнес-рекомендации"):
-    summary_text = f"Общая выручка: {total_revenue} руб. Продано штук: {total_qty}. "
-    summary_text += "Данные по категориям:\n"
-    for idx, row in category_revenue.iterrows():
-        summary_text += f"- {row['category']}: {row['revenue']} руб.\n"
+    if df.empty:
+        st.warning("База данных SQL пуста. Добавьте продажи, чтобы ИИ мог их проанализировать!")
+    else:
+        # Формируем текстовую сводку из реальных данных SQL
+        summary_text = f"Общая выручка компании: {total_revenue} рублей. Всего продано товаров: {total_qty} штук. "
+        summary_text += "Статистика выручки по текущим категориям товаров:\n"
+        for idx, row in category_revenue.iterrows():
+            summary_text += f"- {row['category']}: {row['revenue']} рублей.\n"
+            
+        st.info("Отправка текущих данных из SQL в нейросеть через OpenRouter API...")
         
-    st.info("Отправка агрегированных данных в нейросеть через API...")
-    
-    try:
-        client = OpenAI(
-            base_url="https://deepseek.com",
-            api_key="ВАШ_API_КЛЮЧ"
-        )
-        
-        prompt = f"Ты бизнес-аналитик цифровой экономики. Проанализируй данные продаж и дай 3 кратких управленческих решения. Данные: {summary_text}"
-        
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        st.success("Рекомендации успешно сформированы:")
-        st.write(response.choices.message.content)
-        
-    except Exception as e:
-        st.warning("Режим демонстрации (API ключ не настроен). ИИ сгенерировал базовый шаблон:")
-        st.write("**Анализ ИИ:** Категория 'Электроника' приносит основной доход. **Рекомендация:** Увеличить закупки смартфонов и ноутбуков перед праздниками на 15%. Снизить долю низкомаржинальных аксессуаров.")
+        try:
+            # Настройка подключения к бесплатному ИИ на OpenRouter
+            client = OpenAI(
+                base_url="https://openrouter.ai",
+                api_key="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" # <-- Замените этот текст на ваш ключ sk-or-v3-...
+            )
+            
+            prompt = f"Ты опытный бизнес-аналитик в сфере цифровой экономики. Внимательно изучи текущие данные о продажах компании: {summary_text}. На основе этих цифр сформируй ровно 3 конкретных, точных и практичных управленческих решения на русском языке. Пиши кратко, по делу, без лишней воды."
+            
+            # Используем отличную бесплатную модель от Google / Meta
+            response = client.chat.completions.create(
+                model="google/gemma-2-9b-it:free", 
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            # Выводим живой ответ ИИ на экран
+            st.success("Рекомендации успешно сформированы ИИ в реальном времени:")
+            st.write(response.choices.message.content)
+            
+        except Exception as e:
+            st.error(f"Ошибка подключения к API: {e}")
 
